@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSRS Wiki Race</title>
+<style>
+:root {
+  --stone: #2e2a25;
+  --panel: #3b352d;
+  --panel-2: #4a4237;
+  --edge: #14110e;
+  --bevel: #6b5f4d;
+  --text: #e8dfcc;
+  --muted: #a89b84;
+  --gold: #ff981f;
+  --lime: #6fd16b;
+  --red: #e5675a;
+  --paper: #f3f1ec;
+  --ink: #221d17;
+  --link: #1b5aa6;
+  --font-ui: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--stone);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+[hidden] { display: none !important; }
+button, input, select { font: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+h1, h2, h3 { font-family: var(--font-ui); margin: 0; line-height: 1.15; }
+
+/* Interface panel: beveled like the game's own UI */
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  box-shadow: inset 0 0 0 2px var(--bevel), inset 0 0 0 4px var(--edge);
+  padding: 22px;
+}
+.btn {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 2px solid var(--edge);
+  box-shadow: inset 0 0 0 1px var(--bevel);
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: #574d3f; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--gold); color: #1d1105; font-weight: 700; box-shadow: inset 0 0 0 1px #ffd08a; }
+.btn.primary:hover:not(:disabled) { background: #ffab47; }
+.field { display: grid; gap: 4px; margin-bottom: 14px; }
+.field label { color: var(--muted); font-size: .9rem; }
+.field input[type=text], .field select {
+  background: var(--edge); color: var(--text); border: 1px solid var(--bevel); padding: 8px 10px; width: 100%;
+}
+.field input:disabled, .field select:disabled { opacity: .6; }
+.check { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  background: var(--red); color: #1d0905; padding: 8px 16px; font-weight: 600; z-index: 50; max-width: 90vw;
+}
+
+/* Home */
+#home { max-width: 760px; margin: 0 auto; padding: 8vh 18px 40px; }
+#home h1 { font-size: clamp(2.4rem, 7vw, 4rem); color: var(--gold); text-shadow: 3px 3px 0 var(--edge); }
+#home .sub { color: var(--muted); margin: 10px 0 28px; max-width: 52ch; }
+.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.home-grid h2 { font-size: 1.2rem; margin-bottom: 12px; }
+@media (max-width: 640px) { .home-grid { grid-template-columns: 1fr; } }
+#code-in { text-transform: uppercase; letter-spacing: .3em; }
+
+/* Lobby */
+#lobby { max-width: 900px; margin: 0 auto; padding: 5vh 18px 40px; }
+.lobby-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 18px; }
+.room-code { font-family: var(--font-ui); font-size: 3rem; letter-spacing: .15em; color: var(--gold); text-shadow: 2px 2px 0 var(--edge); }
+.lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 700px) { .lobby-grid { grid-template-columns: 1fr; } }
+.lobby-grid h2 { font-size: 1.15rem; margin-bottom: 12px; }
+.plist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.plist li { background: var(--edge); padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; }
+.tag { color: var(--gold); font-size: .85rem; }
+.sub2 { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* Game */
+#game { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+.bar {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 8px 16px; background: var(--panel); border-bottom: 2px solid var(--edge);
+}
+.bar .target { font-family: var(--font-ui); font-size: 1.2rem; }
+.bar .target b { color: var(--gold); }
+.bar .stat { color: var(--muted); }
+.bar .stat b { color: var(--text); font-variant-numeric: tabular-nums; }
+.bar .spacer { flex: 1; }
+.game-body { display: grid; grid-template-columns: 1fr 230px; min-height: 0; }
+@media (max-width: 800px) { .game-body { grid-template-columns: 1fr; } #board { display: none; } }
+#article-wrap { overflow: auto; background: var(--paper); color: var(--ink); padding: 18px 26px 60px; transition: opacity .15s; }
+#article-wrap.loading { opacity: .5; pointer-events: none; }
+#article-title { font-family: var(--font-ui); font-size: 2rem; border-bottom: 1px solid #b9b3a6; padding-bottom: 6px; margin-bottom: 14px; }
+#board { background: var(--panel); border-left: 2px solid var(--edge); padding: 14px; overflow: auto; }
+#board h3 { font-size: 1rem; margin-bottom: 10px; }
+#board li.me { outline: 1px solid var(--gold); }
+#board .done { color: var(--lime); }
+
+#overlay {
+  position: fixed; inset: 0; background: rgba(20,17,14,.92); z-index: 40;
+  display: grid; place-content: center; text-align: center; padding: 20px;
+}
+#overlay .count { font-family: var(--font-ui); font-size: 9rem; color: var(--gold); line-height: 1; }
+#overlay p { color: var(--muted); font-size: 1.2rem; }
+#overlay b { color: var(--text); }
+
+/* Article content (the wiki's own stylesheet is not loaded, so this is a light approximation) */
+#article { font-size: 1rem; line-height: 1.6; max-width: 1000px; overflow-wrap: anywhere; }
+#article a[data-page] { color: var(--link); cursor: pointer; text-decoration: none; }
+#article a[data-page]:hover { text-decoration: underline; }
+#article img { max-width: 100%; height: auto; vertical-align: middle; }
+#article h2, #article h3, #article h4 { font-family: var(--font-ui); border-bottom: 1px solid #cfc9bb; margin: 1.2em 0 .5em; }
+#article table { border-collapse: collapse; margin: 0 0 1em; max-width: 100%; }
+#article td, #article th { border: 1px solid #b9b3a6; padding: 4px 8px; vertical-align: top; }
+#article th { background: #e1ddd2; }
+#article .infobox, #article .floatright, #article .thumb.tright { float: right; clear: right; margin: 0 0 1em 1em; max-width: 340px; }
+#article .infobox-header, #article .infobox th[colspan] { background: #d5cfbf; text-align: center; }
+#article .navbox { clear: both; font-size: .85rem; }
+#article .navbox, #article .wikitable { display: block; overflow-x: auto; }
+#article .reference, #article .mw-references-wrap { font-size: .85rem; }
+#article ul, #article ol { padding-left: 1.4em; }
+#article .gallery { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+#article .mw-collapsed > tbody > tr:not(:first-child) { display: table-row; }
+
+/* Results */
+#results { max-width: 900px; margin: 0 auto; padding: 5vh 18px 40px; }
+#results h1 { color: var(--gold); font-size: 2.4rem; margin-bottom: 6px; }
+#results .sub { color: var(--muted); margin-bottom: 20px; }
+.rank { display: grid; gap: 10px; margin-bottom: 20px; }
+.rank-row { background: var(--edge); padding: 12px 14px; }
+.rank-row .top { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.rank-row .pos { font-family: var(--font-ui); font-size: 1.6rem; color: var(--gold); min-width: 2ch; }
+.rank-row .name { font-weight: 700; font-size: 1.1rem; }
+.rank-row .meta { color: var(--muted); }
+.rank-row .trail { margin-top: 6px; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.rank-row.dnf .pos { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section id="home">
+  <h1>OSRS Wiki Race</h1>
+  <p class="sub">Get from one Old School RuneScape Wiki page to another using only the links on the page. Fewest clicks wins.</p>
+  <div class="panel">
+    <div class="field">
+      <label for="name">Your name</label>
+      <input id="name" type="text" maxlength="16" placeholder="Zezima" autocomplete="off">
+    </div>
+    <div class="home-grid">
+      <div>
+        <h2>Host a race</h2>
+        <p class="sub2">You become the server, so keep your tab open until the race ends.</p>
+        <button class="btn primary" id="create">Create room</button>
+      </div>
+      <div>
+        <h2>Join a friend</h2>
+        <div class="field"><input id="code-in" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" aria-label="Room code"></div>
+        <button class="btn" id="join">Join room</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="lobby" hidden>
+  <div class="lobby-head">
+    <div class="room-code" id="room-code"></div>
+    <button class="btn" id="copy-link">Copy invite link</button>
+    <button class="btn" id="leave">Leave lobby</button>
+  </div>
+  <p class="tag" id="host-note" hidden>You are hosting. Keep this tab open and visible until the race ends.</p>
+  <div class="lobby-grid">
+    <div class="panel">
+      <h2>Players</h2>
+      <ul class="plist" id="lobby-players"></ul>
+    </div>
+    <div class="panel">
+      <h2>Race settings</h2>
+      <div class="field"><label for="s-start">Start page</label><input id="s-start" type="text"></div>
+      <div class="field"><label for="s-target">Target page</label><input id="s-target" type="text"></div>
+      <div class="field">
+        <label for="s-time">Time limit</label>
+        <select id="s-time">
+          <option value="300">5 minutes</option>
+          <option value="600">10 minutes</option>
+          <option value="900">15 minutes</option>
+          <option value="0">No limit</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="s-nav"> Hide navigation boxes (harder)</label>
+      <label class="check"><input type="checkbox" id="s-find"> Block Ctrl+F (honor system)</label>
+      <div class="row">
+        <button class="btn" id="random">Random pair</button>
+        <button class="btn primary" id="start">Start race</button>
+      </div>
+      <p id="wait-host" class="tag" hidden>Waiting for the host to start.</p>
+    </div>
+  </div>
+</section>
+
+<section id="game" hidden>
+  <div class="bar">
+    <div class="target">Find <b id="g-target"></b></div>
+    <div class="stat">Clicks <b id="g-clicks">0</b></div>
+    <div class="stat"><span id="g-time-label">Time</span> <b id="g-time">0:00</b></div>
+    <div class="spacer"></div>
+    <button class="btn" id="back">Back (+1 click)</button>
+    <button class="btn" id="end">End race</button>
+  </div>
+  <div class="game-body">
+    <div id="article-wrap">
+      <h1 id="article-title"></h1>
+      <div id="article"></div>
+    </div>
+    <aside id="board"><h3>Racers</h3><ul class="plist" id="board-list"></ul></aside>
+  </div>
+</section>
+
+<div id="overlay" hidden>
+  <div class="count" id="ov-count"></div>
+  <p>Start at <b id="ov-start"></b></p>
+  <p>Reach <b id="ov-target"></b></p>
+</div>
+
+<section id="results" hidden>
+  <h1 id="r-title">Race over</h1>
+  <p class="sub" id="r-sub"></p>
+  <div class="rank" id="r-list"></div>
+  <button class="btn primary" id="r-lobby">Back to lobby</button>
+  <p id="r-wait" class="tag" hidden>Waiting for the host to return to the lobby.</p>
+</section>
+
+<div id="toast" hidden role="alert"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const WIKI = 'https://oldschool.runescape.wiki';
+const PEER_PREFIX = 'osrswr-';
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const PRESETS = [
+  ['Lumbridge', 'Dragon scimitar'], ['Goblin', 'Zulrah'], ['Cooking', 'Barrows'],
+  ['Rubber chicken', 'Theatre of Blood'], ['Gnome child', 'TzKal-Zuk'], ['Cow', 'Abyssal whip'],
+  ['Falador', 'Dragon Slayer II'], ['Chicken', 'Vorkath'], ['Mining', 'Tombs of Amascut'],
+  ['Cabbage', 'Nex'], ['Varrock', 'Corporeal Beast'], ['Fishing', 'Fire cape'],
+];
+
+const norm = (t) => String(t || '').replace(/_/g, ' ').trim().toLowerCase();
+const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
+const rand = (n) => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+const absUrl = (u) => (u && u.startsWith('/') && !u.startsWith('//') ? WIKI + u : u);
+
+/* =====================================================================
+   Wiki fetching and sanitising (runs in the host's browser, and the
+   sanitiser runs again in every player's browser on what they receive)
+   ===================================================================== */
+const cache = new Map();
+
+async function fetchPage(title) {
+  const key = norm(title);
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < 3600e3) return hit;
+  const url = WIKI + '/api.php?' + new URLSearchParams({
+    action: 'parse', page: title, prop: 'text', redirects: '1',
+    disableeditsection: '1', disablelimitreport: '1',
+    format: 'json', formatversion: '2', origin: '*',
+  });
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('bad status');
+    data = await res.json();
+  } catch {
+    throw new Error('Could not reach the OSRS Wiki. Try again.');
+  }
+  if (data.error) {
+    throw new Error(data.error.code === 'missingtitle'
+      ? '"' + title + '" is not a page on the OSRS Wiki.'
+      : data.error.info || 'The wiki could not load that page.');
+  }
+  const entry = { title: data.parse.title, raw: data.parse.text, at: Date.now() };
+  cache.set(key, entry);
+  cache.set(norm(entry.title), entry);
+  if (cache.size > 800) cache.delete(cache.keys().next().value);
+  return entry;
+}
+
+function titleFromHref(href) {
+  if (!href || !href.startsWith('/w/') || href.includes('?')) return null;
+  let t;
+  try { t = decodeURIComponent(href.slice(3).split('#')[0]); } catch { return null; }
+  t = t.replace(/_/g, ' ').trim();
+  if (!t || t.includes(':')) return null; // namespace pages (File:, Category:, Exchange: ...)
+  return t;
+}
+
+const KILL = 'script,style,iframe,object,embed,form,input,button,noscript,link,meta,video,audio,svg,math,source';
+
+// Cleans a parsed article in place. On the host (fromHost) it also rewrites wiki links;
+// on players it only keeps links the host already marked with data-page.
+function cleanFragment(root, opts = {}) {
+  root.querySelectorAll(KILL + ',.mw-editsection,.noprint,.catlinks,.mw-empty-elt,#toc,.toc').forEach((e) => e.remove());
+  if (opts.hideNav) root.querySelectorAll('.navbox,.navbox-styles,.navbar').forEach((e) => e.remove());
+
+  const links = new Set();
+  root.querySelectorAll('a').forEach((a) => {
+    const t = opts.fromHost ? titleFromHref(a.getAttribute('href')) : (a.getAttribute('data-page') || null);
+    if (t && norm(t) !== opts.self) {
+      a.setAttribute('href', '#');
+      a.setAttribute('data-page', t);
+      links.add(t);
+    } else {
+      a.replaceWith(...a.childNodes);
+    }
+  });
+
+  root.querySelectorAll('*').forEach((el) => {
+    for (const attr of [...el.attributes]) {
+      const n = attr.name.toLowerCase();
+      if (n.startsWith('on') || n === 'srcdoc' || n === 'formaction' || n === 'xlink:href'
+        || (n === 'style' && /url\(|expression|javascript:/i.test(attr.value))) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+
+  root.querySelectorAll('img').forEach((img) => {
+    const src = absUrl(img.getAttribute('src'));
+    if (!src || !src.startsWith(WIKI + '/')) { img.remove(); return; }
+    img.setAttribute('src', src);
+    const ss = img.getAttribute('srcset');
+    if (ss) {
+      const ok = ss.split(',').map((s) => {
+        const [u, ...rest] = s.trim().split(/\s+/);
+        return [absUrl(u), ...rest].join(' ');
+      }).filter((s) => s.startsWith(WIKI + '/'));
+      if (ok.length) img.setAttribute('srcset', ok.join(', ')); else img.removeAttribute('srcset');
+    }
+    img.setAttribute('loading', 'lazy');
+    img.setAttribute('referrerpolicy', 'no-referrer');
+  });
+
+  return [...links];
+}
+
+function renderForPlayer(entry, hideNav) {
+  const doc = new DOMParser().parseFromString('<div id="root">' + entry.raw + '</div>', 'text/html');
+  const root = doc.getElementById('root');
+  const links = cleanFragment(root, { fromHost: true, self: norm(entry.title), hideNav });
+  return { html: root.innerHTML, links };
+}
+
+/* =====================================================================
+   HOST: the room lives in the host's browser
+   ===================================================================== */
+let room = null;          // only set while this browser is hosting
+let isHosting = false;
+
+const localLink = {
+  playerId: null,
+  send: (m) => queueMicrotask(() => handle(structuredClone(m))),
+};
+
+function newPlayer(id, name, send) {
+  return { id, name, send, online: true, clicks: 0, stack: [], trail: [], title: null, links: new Set(), finished: false, time: null, busy: false };
+}
+function psend(p, m) { if (p.online && p.send) { try { p.send(m); } catch { /* connection gone */ } } }
+
+function publicState() {
+  const done = room.phase === 'finished';
+  return {
+    code: room.code, phase: room.phase, hostId: room.hostId, settings: room.settings,
+    start: room.start, target: room.target, startAt: room.startAt, endsAt: room.endsAt,
+    serverNow: Date.now(),
+    players: [...room.players.values()].map((p) => ({
+      id: p.id, name: p.name, connected: p.online, clicks: p.clicks, finished: p.finished, time: p.time,
+      trail: done ? p.trail : undefined,
+    })),
+  };
+}
+function broadcast() {
+  if (!room) return;
+  const msg = { t: 'state', room: publicState() };
+  for (const p of room.players.values()) psend(p, msg);
+}
+function clearTimers() { room.timers.forEach(clearTimeout); room.timers = []; }
+function resetPlayers() {
+  for (const p of room.players.values()) {
+    Object.assign(p, { clicks: 0, stack: [], trail: [], title: null, links: new Set(), finished: false, time: null, busy: false });
+  }
+}
+
+function deliver(p, entry, extra = {}) {
+  const r = renderForPlayer(entry, room.settings.hideNav);
+  p.title = entry.title;
+  p.links = new Set(r.links);
+  psend(p, { t: 'page', title: entry.title, html: r.html, clicks: p.clicks, canBack: p.stack.length > 1, ...extra });
+}
+
+async function startGame(host) {
+  const s = room.settings;
+  try {
+    const [a, b] = await Promise.all([fetchPage(s.start), fetchPage(s.target)]);
+    if (norm(a.title) === norm(b.title)) throw new Error('Start and target must be different pages.');
+    clearTimers();
+    resetPlayers();
+    room.start = a.title;
+    room.target = b.title;
+    room.phase = 'countdown';
+    room.startAt = Date.now() + 4000;
+    room.endsAt = s.timeLimit ? room.startAt + s.timeLimit * 1000 : null;
+    broadcast();
+    room.timers.push(setTimeout(beginPlay, 4000));
+  } catch (e) {
+    psend(host, { t: 'error', msg: e.message });
+  }
+}
+
+async function beginPlay() {
+  if (!room || room.phase !== 'countdown') return;
+  try {
+    const entry = await fetchPage(room.start);
+    room.phase = 'playing';
+    for (const p of room.players.values()) {
+      p.stack = [entry.title];
+      p.trail = [entry.title];
+      deliver(p, entry);
+    }
+    broadcast();
+    if (room.endsAt) room.timers.push(setTimeout(endGame, Math.max(0, room.endsAt - Date.now())));
+  } catch (e) {
+    room.phase = 'lobby';
+    broadcast();
+    psend(room.players.get(room.hostId), { t: 'error', msg: e.message });
+  }
+}
+
+function endGame() {
+  if (!room || room.phase !== 'playing') return;
+  clearTimers();
+  room.phase = 'finished';
+  broadcast();
+}
+
+function checkAllDone() {
+  const online = [...room.players.values()].filter((p) => p.online);
+  if (online.length && online.every((p) => p.finished)) endGame();
+}
+
+async function handleNav(p, page, back) {
+  if (room.phase !== 'playing' || p.finished || p.busy) return;
+  if (back) {
+    if (p.stack.length < 2) return;
+  } else if (!p.links.has(page)) {
+    return psend(p, { t: 'error', msg: 'That link is not on your current page.' });
+  }
+  p.busy = true;
+  try {
+    let entry;
+    if (back) {
+      entry = await fetchPage(p.stack[p.stack.length - 2]);
+      p.stack.pop();
+    } else {
+      entry = await fetchPage(page);
+      p.stack.push(entry.title);
+    }
+    p.clicks++;
+    p.trail.push(entry.title);
+    if (norm(entry.title) === norm(room.target)) { p.finished = true; p.time = Date.now() - room.startAt; }
+    deliver(p, entry, { finished: p.finished });
+    broadcast();
+    checkAllDone();
+  } catch (e) {
+    psend(p, { t: 'error', msg: e.message });
+  } finally {
+    p.busy = false;
+  }
+}
+
+function applySettings(m) {
+  const s = room.settings;
+  if (typeof m.start === 'string') s.start = clean(m.start, 80);
+  if (typeof m.target === 'string') s.target = clean(m.target, 80);
+  if (Number.isFinite(+m.timeLimit)) s.timeLimit = Math.max(0, Math.min(3600, +m.timeLimit | 0));
+  if (typeof m.hideNav === 'boolean') s.hideNav = m.hideNav;
+  if (typeof m.noFind === 'boolean') s.noFind = m.noFind;
+}
+
+function peerGone(link) {
+  if (!room) return;
+  const p = room.players.get(link.playerId);
+  if (!p || p.send !== link.send) return; // already replaced by a newer connection
+  p.online = false;
+  if (room.phase === 'lobby') {
+    setTimeout(() => {
+      if (room && !p.online && room.phase === 'lobby' && room.players.get(p.id) === p) { room.players.delete(p.id); broadcast(); }
+    }, 15000);
+  }
+  broadcast();
+  if (room.phase === 'playing') checkAllDone();
+}
+
+async function hostReceive(link, m) {
+  if (!room || !m || typeof m.t !== 'string') return;
+
+  if (m.t === 'join') {
+    if (room.phase !== 'lobby') return link.send({ t: 'error', msg: 'That race has already started.' });
+    if (room.players.size >= 20) return link.send({ t: 'error', msg: 'That room is full.' });
+    const id = crypto.randomUUID();
+    room.players.set(id, newPlayer(id, clean(m.name, 16) || 'Adventurer', link.send));
+    link.playerId = id;
+    link.send({ t: 'joined', code: room.code, id });
+    return broadcast();
+  }
+  if (m.t === 'rejoin') {
+    const p = room.players.get(m.id);
+    if (!p) return link.send({ t: 'gone' });
+    p.send = link.send;
+    p.online = true;
+    link.playerId = p.id;
+    link.send({ t: 'joined', code: room.code, id: p.id });
+    broadcast();
+    if (room.phase === 'playing' && p.title) {
+      try { deliver(p, await fetchPage(p.title), { finished: p.finished }); } catch { /* ignore */ }
+    }
+    return;
+  }
+
+  const p = room.players.get(link.playerId);
+  if (!p) return;
+  const isHost = p.id === room.hostId;
+
+  switch (m.t) {
+    case 'settings':
+      if (isHost && room.phase === 'lobby') { applySettings(m); broadcast(); }
+      break;
+    case 'random':
+      if (isHost && room.phase === 'lobby') {
+        const [start, target] = PRESETS[rand(PRESETS.length)];
+        room.settings.start = start; room.settings.target = target;
+        broadcast();
+      }
+      break;
+    case 'start':
+      if (isHost && room.phase === 'lobby') await startGame(p);
+      break;
+    case 'nav': await handleNav(p, clean(m.page, 120), false); break;
+    case 'back': await handleNav(p, null, true); break;
+    case 'end': if (isHost) endGame(); break;
+    case 'lobby':
+      if (isHost && room.phase === 'finished') {
+        room.phase = 'lobby';
+        room.start = room.target = room.startAt = room.endsAt = null;
+        resetPlayers();
+        for (const [id, x] of room.players) if (!x.online) room.players.delete(id);
+        broadcast();
+      }
+      break;
+  }
+}
+
+/* =====================================================================
+   NETWORK: PeerJS (WebRTC) connects players straight to the host
+   ===================================================================== */
+let peer = null, conn = null, leaving = false, net = null;
+let me = null, st = null, offset = 0, hasPage = false, toastTimer;
+
+const isHost = () => st && st.hostId === me;
+const now = () => Date.now() + offset;
+
+function send(o) {
+  if (isHosting) hostReceive(localLink, o);
+  else if (conn && conn.open) conn.send(o);
+}
+
+function createRoom(name) {
+  leaving = false;
+  $('#create').disabled = true;
+  const attempt = (n) => {
+    const code = Array.from({ length: 4 }, () => ALPHABET[rand(ALPHABET.length)]).join('');
+    const p = new Peer(PEER_PREFIX + code);
+    let opened = false;
+    p.on('open', () => { opened = true; peer = p; startHosting(code, name); });
+    p.on('error', (e) => {
+      if (!opened) {
+        p.destroy();
+        if (e.type === 'unavailable-id' && n < 5) return attempt(n + 1);
+        $('#create').disabled = false;
+        return toast('Could not create a room (' + (e.type || 'network error') + '). Try again.');
+      }
+      if (e.type !== 'peer-unavailable') toast('Connection problem: ' + (e.type || 'unknown'));
+    });
+  };
+  attempt(0);
+}
+
+function startHosting(code, name) {
+  isHosting = true;
+  const id = crypto.randomUUID();
+  const [start, target] = PRESETS[rand(PRESETS.length)];
+  room = {
+    code, hostId: id, phase: 'lobby', players: new Map(), timers: [],
+    settings: { start, target, timeLimit: 600, hideNav: false, noFind: false },
+    start: null, target: null, startAt: null, endsAt: null,
+  };
+  localLink.playerId = id;
+  room.players.set(id, newPlayer(id, clean(name, 16) || 'Adventurer', localLink.send));
+
+  peer.on('connection', (c) => {
+    const link = { playerId: null, send: (m) => { if (c.open) c.send(m); } };
+    c.on('data', (m) => hostReceive(link, m));
+    c.on('close', () => peerGone(link));
+    c.on('error', () => peerGone(link));
+  });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* ignore */ } });
+
+  me = id;
+  history.replaceState(null, '', location.pathname + '?room=' + code);
+  handle({ t: 'joined', code, id });
+  broadcast();
+  $('#create').disabled = false;
+}
+
+function joinRoom(name, code, rejoinId) {
+  code = clean(code, 4).toUpperCase();
+  if (code.length !== 4) return toast('Enter the 4-letter room code.');
+  leaving = false;
+  net = { code, name, id: rejoinId || null, tries: 0 };
+  if (peer) { try { peer.destroy(); } catch { /* ignore */ } }
+  $('#join').disabled = true;
+  const p = new Peer();
+  peer = p;
+  p.on('open', dial);
+  p.on('disconnected', () => { if (!leaving) { try { p.reconnect(); } catch { /* ignore */ } } });
+  p.on('error', (e) => {
+    if (leaving) return;
+    if (e.type === 'peer-unavailable') return dialFailed();
+    toast('Connection problem: ' + (e.type || 'unknown'));
+  });
+}
+
+function dial() {
+  const c = peer.connect(PEER_PREFIX + net.code, { reliable: true });
+  conn = c;
+  c.on('open', () => c.send(net.id ? { t: 'rejoin', code: net.code, id: net.id } : { t: 'join', name: net.name, code: net.code }));
+  c.on('data', (m) => handle(m));
+  c.on('close', () => { if (!leaving && conn === c) dialFailed(); });
+  c.on('error', () => {});
+  setTimeout(() => {
+    if (!c.open && conn === c && !leaving) {
+      toast('Could not connect. The room may be gone, or your network may block peer-to-peer connections.');
+      dialFailed(true);
+    }
+  }, 15000);
+}
+
+function dialFailed(quiet) {
+  if (!net.id) {
+    if (!quiet) toast('No room with that code. Check it and try again.');
+    return leaveToHome();
+  }
+  if (net.tries++ >= 8) { toast('Lost connection to the host.'); return leaveToHome(); }
+  if (!quiet) toast('Connection lost. Reconnecting...');
+  setTimeout(() => { if (!leaving) dial(); }, 2000);
+}
+
+function leaveToHome() {
+  leaving = true;
+  sessionStorage.removeItem('session');
+  const oldPeer = peer, oldConn = conn;
+  if (isHosting && room) {
+    for (const p of room.players.values()) if (p.id !== room.hostId) psend(p, { t: 'closed' });
+    clearTimers();
+  }
+  setTimeout(() => {
+    try { oldConn && oldConn.close(); } catch { /* ignore */ }
+    try { oldPeer && oldPeer.destroy(); } catch { /* ignore */ }
+  }, 300);
+  isHosting = false; room = null; peer = null; conn = null; net = null;
+  st = null; me = null; hasPage = false;
+  localLink.playerId = null;
+  history.replaceState(null, '', location.pathname);
+  $('#create').disabled = false; $('#join').disabled = false;
+  show('home');
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (isHosting && room && room.players.size > 1) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* =====================================================================
+   UI (same for hosts and players)
+   ===================================================================== */
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 4500);
+}
+
+const fmt = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+};
+
+function handle(m) {
+  switch (m.t) {
+    case 'joined':
+      me = m.id;
+      if (!isHosting) {
+        net.id = m.id; net.tries = 0;
+        sessionStorage.setItem('session', JSON.stringify({ code: m.code, id: m.id, name: net.name }));
+        history.replaceState(null, '', location.pathname + '?room=' + m.code);
+        $('#join').disabled = false;
+      }
+      break;
+    case 'gone':
+      toast('That room no longer exists.');
+      leaveToHome();
+      break;
+    case 'closed':
+      toast('The host closed the room.');
+      leaveToHome();
+      break;
+    case 'state':
+      st = m.room;
+      offset = st.serverNow - Date.now();
+      renderState();
+      break;
+    case 'page':
+      showPage(m);
+      break;
+    case 'error':
+      $('#article-wrap').classList.remove('loading');
+      $('#join').disabled = false;
+      toast(m.msg);
+      if (m.msg.includes('already started') || m.msg.includes('full')) { if (!isHosting) leaveToHome(); }
+      break;
+  }
+}
+
+function show(id) {
+  for (const s of ['home', 'lobby', 'game', 'results']) $('#' + s).hidden = s !== id;
+}
+
+function renderState() {
+  if (!st) return;
+  if (st.phase === 'lobby') { hasPage = false; renderLobby(); show('lobby'); }
+  else if (st.phase === 'finished') { renderResults(); show('results'); }
+  else { renderGame(); show('game'); }
+}
+
+function renderLobby() {
+  $('#room-code').textContent = st.code;
+  const ul = $('#lobby-players');
+  ul.replaceChildren(...st.players.map((p) => {
+    const li = document.createElement('li');
+    const n = document.createElement('span'); n.textContent = p.name + (p.id === me ? ' (you)' : '');
+    li.append(n);
+    if (p.id === st.hostId) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'Host'; li.append(t); }
+    else if (!p.connected) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'Reconnecting'; li.append(t); }
+    return li;
+  }));
+  const host = isHost();
+  const s = st.settings;
+  for (const [id, val] of [['#s-start', s.start], ['#s-target', s.target]]) {
+    const el = $(id); el.disabled = !host;
+    if (document.activeElement !== el) el.value = val;
+  }
+  $('#s-time').disabled = !host; $('#s-time').value = String(s.timeLimit);
+  $('#s-nav').disabled = !host; $('#s-nav').checked = s.hideNav;
+  $('#s-find').disabled = !host; $('#s-find').checked = s.noFind;
+  $('#random').hidden = !host; $('#start').hidden = !host;
+  $('#wait-host').hidden = host;
+  $('#host-note').hidden = !host;
+}
+
+function renderGame() {
+  $('#g-target').textContent = st.target;
+  $('#end').hidden = !isHost();
+  const sorted = [...st.players].sort((a, b) => (b.finished - a.finished) || (a.clicks - b.clicks));
+  $('#board-list').replaceChildren(...sorted.map((p) => {
+    const li = document.createElement('li');
+    if (p.id === me) li.className = 'me';
+    const n = document.createElement('span'); n.textContent = p.name;
+    const c = document.createElement('span');
+    c.textContent = p.finished ? p.clicks + ' ✓' : p.clicks;
+    if (p.finished) c.className = 'done';
+    li.append(n, c);
+    return li;
+  }));
+  tick();
+}
+
+function showPage(m) {
+  hasPage = true;
+  // Re-sanitise whatever the host sent before it touches the page
+  const doc = new DOMParser().parseFromString('<div id="root">' + m.html + '</div>', 'text/html');
+  const root = doc.getElementById('root');
+  cleanFragment(root, {});
+  $('#article').replaceChildren(...root.childNodes);
+  $('#article-title').textContent = m.title;
+  $('#article-wrap').classList.remove('loading');
+  $('#article-wrap').scrollTop = 0;
+  $('#g-clicks').textContent = m.clicks;
+  $('#back').disabled = !m.canBack || !!m.finished;
+  if (m.finished) toast('You reached ' + st.target + ' in ' + m.clicks + ' clicks!');
+}
+
+function renderResults() {
+  const ps = [...st.players].sort((a, b) =>
+    (b.finished - a.finished) || (a.finished ? (a.clicks - b.clicks) || (a.time - b.time) : b.clicks - a.clicks));
+  const winner = ps[0] && ps[0].finished ? ps[0] : null;
+  $('#r-title').textContent = winner ? winner.name + ' wins' : 'Nobody made it';
+  $('#r-sub').textContent = st.start + ' to ' + st.target + '. Ranked by clicks, then time.';
+  $('#r-list').replaceChildren(...ps.map((p, i) => {
+    const row = document.createElement('div'); row.className = 'rank-row' + (p.finished ? '' : ' dnf');
+    const top = document.createElement('div'); top.className = 'top';
+    const pos = document.createElement('span'); pos.className = 'pos'; pos.textContent = p.finished ? i + 1 : '-';
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = p.name;
+    const meta = document.createElement('span'); meta.className = 'meta';
+    meta.textContent = p.finished ? p.clicks + ' clicks in ' + fmt(p.time) : 'Did not finish (' + p.clicks + ' clicks)';
+    top.append(pos, name, meta);
+    const trail = document.createElement('div'); trail.className = 'trail';
+    trail.textContent = (p.trail || []).join(' > ');
+    row.append(top, trail);
+    return row;
+  }));
+  $('#r-lobby').hidden = !isHost();
+  $('#r-wait').hidden = isHost();
+}
+
+function tick() {
+  if (!st || (st.phase !== 'countdown' && st.phase !== 'playing')) { $('#overlay').hidden = true; return; }
+  const n = now();
+  if (n < st.startAt) {
+    $('#overlay').hidden = false;
+    $('#ov-count').textContent = Math.ceil((st.startAt - n) / 1000);
+    $('#ov-start').textContent = st.start;
+    $('#ov-target').textContent = st.target;
+    $('#g-time').textContent = fmt(st.endsAt ? st.endsAt - st.startAt : 0);
+    return;
+  }
+  $('#overlay').hidden = true;
+  if (st.endsAt) { $('#g-time-label').textContent = 'Left'; $('#g-time').textContent = fmt(st.endsAt - n); }
+  else { $('#g-time-label').textContent = 'Time'; $('#g-time').textContent = fmt(n - st.startAt); }
+}
+setInterval(tick, 250);
+
+/* ---------- Buttons ---------- */
+const playerName = () => $('#name').value.trim() || 'Adventurer';
+const saveName = () => localStorage.setItem('name', playerName());
+
+$('#create').onclick = () => { saveName(); createRoom(playerName()); };
+$('#join').onclick = () => { saveName(); sessionStorage.removeItem('session'); joinRoom(playerName(), $('#code-in').value); };
+$('#code-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#join').click(); });
+
+$('#copy-link').onclick = async () => {
+  const url = location.origin + location.pathname + '?room=' + st.code;
+  try { await navigator.clipboard.writeText(url); toast('Invite link copied'); } catch { toast(url); }
+};
+$('#leave').onclick = () => {
+  if (isHosting && room && room.players.size > 1 && !confirm('You are the host. Leaving closes the room for everyone.')) return;
+  leaveToHome();
+};
+
+let settingsTimer;
+const settingsMsg = () => ({
+  t: 'settings',
+  start: $('#s-start').value, target: $('#s-target').value,
+  timeLimit: +$('#s-time').value, hideNav: $('#s-nav').checked, noFind: $('#s-find').checked,
+});
+function pushSettings() { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => send(settingsMsg()), 300); }
+for (const id of ['#s-start', '#s-target', '#s-time', '#s-nav', '#s-find']) $(id).addEventListener('input', pushSettings);
+
+$('#random').onclick = () => send({ t: 'random' });
+$('#start').onclick = () => { clearTimeout(settingsTimer); send(settingsMsg()); send({ t: 'start' }); };
+$('#back').onclick = () => { $('#article-wrap').classList.add('loading'); send({ t: 'back' }); };
+$('#end').onclick = () => { if (confirm('End the race for everyone?')) send({ t: 'end' }); };
+$('#r-lobby').onclick = () => send({ t: 'lobby' });
+
+$('#article').addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-page]');
+  e.preventDefault();
+  if (!a || !hasPage) return;
+  $('#article-wrap').classList.add('loading');
+  send({ t: 'nav', page: a.dataset.page });
+});
+
+document.addEventListener('keydown', (e) => {
+  if (st && st.settings.noFind && st.phase === 'playing' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault();
+    toast('Ctrl+F is disabled for this race.');
+  }
+});
+
+/* ---------- Boot ---------- */
+$('#name').value = localStorage.getItem('name') || '';
+const roomParam = new URLSearchParams(location.search).get('room');
+const saved = JSON.parse(sessionStorage.getItem('session') || 'null');
+if (saved) joinRoom(saved.name, saved.code, saved.id);
+else if (roomParam) $('#code-in').value = roomParam.toUpperCase();
+</script>
+</body>
+</html>
